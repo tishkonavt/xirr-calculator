@@ -1,0 +1,35 @@
+# Gradle
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Generated files
+*.png
+*.jpg
+*.jpeg
+
+# CSV data files
+*.csv
+
+# Logs
+*.log
+
+# Java
+*.class
+*.jar
+!gradle-wrapper.jar

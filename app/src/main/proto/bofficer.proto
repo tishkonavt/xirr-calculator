@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package grpc.txbofficer;
+
+option java_package = "grpc.txbofficer";
+option java_outer_classname = "BofficerProto";
+
+service BofficerApi {
+  rpc GetPortfolioHistory(GetPortfolioHistoryRequest) returns (GetPortfolioHistoryResponse);
+}
+
+message GetPortfolioHistoryRequest {
+  AccountId accountId = 1;
+  Period period = 2;
+  string currency = 3;
+}
+
+message AccountId {
+  string id = 1;
+  string tradeSystemName = 2;
+}
+
+message Period {
+  Date from = 1;
+  Date to = 2;
+}
+
+message Date {
+  int32 year = 1;
+  int32 month = 2;
+  int32 day = 3;
+}
+
+message GetPortfolioHistoryResponse {
+  repeated PortfolioDay days = 1;
+  bool snapshot = 2;
+}
+
+message PortfolioDay {
+  Date date = 1;
+  DecimalValue equity = 2;
+  DecimalValue yield_day = 3;
+  DecimalValue income_day = 4;
+  DecimalValue yield_total = 5;
+  DecimalValue income_total = 6;
+  DecimalValue deposit = 7;
+  DecimalValue withdraw = 8;
+}
+
+message DecimalValue {
+  string num = 1;
+  int32 scale = 2;
+}

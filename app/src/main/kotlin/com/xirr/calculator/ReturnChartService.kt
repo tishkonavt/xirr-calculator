@@ -7,16 +7,10 @@ import com.xirr.models.XIRRResult
 import java.time.temporal.ChronoUnit
 import kotlin.math.pow
 
-/**
- * Сервис для построения графика доходности портфеля
- */
 class ReturnChartService(
     private val xirrCalculator: XIRRCalculator = XIRRCalculator()
 ) {
     
-    /**
-     * Строит график ГОДОВОЙ доходности (XIRR)
-     */
     fun buildReturnChart(snapshots: List<PortfolioSnapshot>): List<ReturnPoint> {
         if (snapshots.isEmpty()) {
             return emptyList()
@@ -28,16 +22,21 @@ class ReturnChartService(
         for (i in sortedSnapshots.indices) {
             val currentDate = sortedSnapshots[i].date
             val snapshotsUpToDate = sortedSnapshots.subList(0, i + 1)
-            val cashFlows = convertToCashFlowsFixed(snapshotsUpToDate)
+            val cashFlows = convertToCashFlows(snapshotsUpToDate)
+            
+            // Первый день всегда 0%
+            if (i == 0) {
+                returnPoints.add(ReturnPoint(date = currentDate, xirrRate = 0.0))
+                continue
+            }
+            
             val xirrResult = xirrCalculator.calculate(cashFlows)
             
             val rate = when (xirrResult) {
                 is XIRRResult.Success -> xirrResult.rate
                 is XIRRResult.Error -> {
-                    if (i == 0) 0.0 else {
-                        println("Предупреждение: не удалось рассчитать XIRR для даты $currentDate: ${xirrResult.message}")
-                        0.0
-                    }
+                    println("⚠️  XIRR не рассчитан для $currentDate: ${xirrResult.message}")
+                    returnPoints.lastOrNull()?.xirrRate ?: 0.0
                 }
             }
             
@@ -47,25 +46,17 @@ class ReturnChartService(
         return returnPoints
     }
     
-    /**
-     * Строит график КУМУЛЯТИВНОЙ доходности (за весь период)
-     * На основе XIRR: кумулятивная = (1 + XIRR)^years - 1
-     */
     fun buildCumulativeReturnChart(snapshots: List<PortfolioSnapshot>): List<ReturnPoint> {
         if (snapshots.isEmpty()) {
             return emptyList()
         }
         
-        // Сначала получаем XIRR для каждой даты
         val xirrPoints = buildReturnChart(snapshots)
-        
-        // Конвертируем XIRR в кумулятивную доходность
         val startDate = snapshots.first().date
         
         val cumulativePoints = xirrPoints.map { xirrPoint ->
             val years = ChronoUnit.DAYS.between(startDate, xirrPoint.date) / 365.0
             
-            // Кумулятивная доходность = (1 + XIRR)^years - 1
             val cumulativeReturn = if (years > 0) {
                 (1.0 + xirrPoint.xirrRate).pow(years) - 1.0
             } else {
@@ -78,32 +69,55 @@ class ReturnChartService(
         return cumulativePoints
     }
     
-    /**
-     * Конвертирует снимки портфеля в денежные потоки для XIRR
-     */
-    private fun convertToCashFlowsFixed(snapshots: List<PortfolioSnapshot>): List<CashFlow> {
-        val cashFlows = mutableListOf<CashFlow>()
+    private fun convertToCashFlows(snapshots: List<PortfolioSnapshot>): List<CashFlow> {
+        if (snapshots.isEmpty()) return emptyList()
         
-        snapshots.forEach { snapshot ->
+        val cashFlows = mutableListOf<CashFlow>()
+        val firstSnapshot = snapshots.first()
+        
+        // Первый день
+        val initialInvestment = if (firstSnapshot.cashIn > 0) {
+            firstSnapshot.cashIn
+        } else if (firstSnapshot.valuation > 0) {
+            firstSnapshot.valuation
+        } else {
+            0.0
+        }
+        
+        if (initialInvestment > 0) {
+            cashFlows.add(CashFlow(date = firstSnapshot.date, amount = -initialInvestment))
+        }
+        
+        if (firstSnapshot.cashOut > 0) {
+            cashFlows.add(CashFlow(date = firstSnapshot.date, amount = firstSnapshot.cashOut))
+        }
+        
+        // Промежуточные дни (КРОМЕ последнего!)
+        for (i in 1 until snapshots.size - 1) {
+            val snapshot = snapshots[i]
+            
             if (snapshot.cashIn > 0) {
                 cashFlows.add(CashFlow(date = snapshot.date, amount = -snapshot.cashIn))
             }
+            
             if (snapshot.cashOut > 0) {
                 cashFlows.add(CashFlow(date = snapshot.date, amount = snapshot.cashOut))
             }
         }
         
-        val lastSnapshot = snapshots.last()
-        val netValuation = lastSnapshot.valuation - lastSnapshot.cashIn + lastSnapshot.cashOut
-        
-        cashFlows.add(CashFlow(date = lastSnapshot.date, amount = netValuation))
+        // Последний день - ТОЛЬКО чистая оценка
+        if (snapshots.size > 1) {
+            val lastSnapshot = snapshots.last()
+            val netValue = lastSnapshot.valuation - lastSnapshot.cashIn + lastSnapshot.cashOut
+            cashFlows.add(CashFlow(date = lastSnapshot.date, amount = netValue))
+        } else {
+            val netValue = firstSnapshot.valuation - firstSnapshot.cashIn + firstSnapshot.cashOut
+            cashFlows.add(CashFlow(date = firstSnapshot.date, amount = netValue))
+        }
         
         return cashFlows
     }
     
-    /**
-     * Форматирует результат для вывода
-     */
     fun formatReturnChart(returnPoints: List<ReturnPoint>, isCumulative: Boolean = false): String {
         val sb = StringBuilder()
         val title = if (isCumulative) "График кумулятивной доходности" else "График доходности XIRR"

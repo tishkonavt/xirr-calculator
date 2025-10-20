@@ -7,21 +7,16 @@ import java.io.InputStreamReader
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-/**
- * Провайдер данных из CSV файла
- */
 class CsvDataProvider(private val filePath: String) : DataProvider {
     
     override fun getPortfolioSnapshots(): List<PortfolioSnapshot> {
         println("Чтение файла: $filePath")
         
         val lines = try {
-            // Сначала пробуем как обычный файл
             val file = File(filePath)
             if (file.exists()) {
                 file.readLines()
             } else {
-                // Пробуем как ресурс
                 val inputStream = this::class.java.classLoader.getResourceAsStream(filePath.removePrefix("app/src/main/resources/"))
                     ?: throw IllegalArgumentException("Файл не найден: $filePath")
                 
@@ -39,6 +34,19 @@ class CsvDataProvider(private val filePath: String) : DataProvider {
         
         val snapshots = dataLines.mapNotNull { line ->
             parseLine(line)
+        }
+        
+        if (snapshots.isEmpty()) {
+            throw IllegalArgumentException("Нет корректных данных в CSV")
+        }
+        
+        // Информация о первом дне
+        val firstSnapshot = snapshots.first()
+        if (firstSnapshot.cashIn == 0.0 && firstSnapshot.valuation > 0.0) {
+            println("ℹ️  Первый день без ввода средств.")
+            println("   Начальная оценка: ${String.format("%,.0f", firstSnapshot.valuation)}")
+            println("   Будет использована как начальный ввод для расчета XIRR.")
+            println()
         }
         
         println("Загружено ${snapshots.size} записей из CSV")

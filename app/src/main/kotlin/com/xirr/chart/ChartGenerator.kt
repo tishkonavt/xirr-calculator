@@ -8,7 +8,8 @@ import org.knowm.xchart.style.Styler
 import org.knowm.xchart.style.markers.SeriesMarkers
 import java.awt.Color
 import java.io.File
-import java.time.temporal.ChronoUnit
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 /**
  * Генератор графиков доходности
@@ -29,9 +30,9 @@ class ChartGenerator {
             throw IllegalArgumentException("Список точек доходности пуст")
         }
         
-        val baseDate = returnPoints.first().date
+        // Конвертируем даты в java.util.Date для XChart
         val xData = returnPoints.map { 
-            ChronoUnit.DAYS.between(baseDate, it.date).toDouble() 
+            java.util.Date.from(it.date.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant())
         }
         val yData = returnPoints.map { it.xirrRate * 100 }
         
@@ -46,7 +47,7 @@ class ChartGenerator {
             .yAxisTitle(yAxisTitle)
             .build()
         
-        styleChart(chart, returnPoints)
+        styleChart(chart, returnPoints, isCumulative)
         
         val seriesName = if (isCumulative) "Кумулятивная доходность" else "XIRR доходность"
         val series = chart.addSeries(seriesName, xData, yData)
@@ -55,6 +56,7 @@ class ChartGenerator {
         series.markerColor = if (isCumulative) Color(46, 204, 113) else Color(41, 128, 185)
         series.lineStyle = org.knowm.xchart.style.lines.SeriesLines.SOLID
         
+        // Нулевая линия
         val zeroLine = chart.addSeries(
             "Нулевой уровень",
             xData,
@@ -70,7 +72,7 @@ class ChartGenerator {
         return outputFile
     }
     
-    private fun styleChart(chart: XYChart, returnPoints: List<ReturnPoint>) {
+    private fun styleChart(chart: XYChart, returnPoints: List<ReturnPoint>, isCumulative: Boolean) {
         val styler = chart.styler
         
         styler.chartBackgroundColor = Color.WHITE
@@ -82,6 +84,40 @@ class ChartGenerator {
         
         styler.axisTickLabelsFont = java.awt.Font("Arial", java.awt.Font.PLAIN, 12)
         styler.yAxisDecimalPattern = "#0.00'%'"
-        styler.markerSize = 8
+        styler.markerSize = 6
+        
+        // ⭐ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: настройка оси X для дат
+        styler.datePattern = getDatePattern(returnPoints)
+        styler.isXAxisTicksVisible = true
+        
+        // Поворот меток дат для лучшей читаемости
+        styler.xAxisLabelRotation = 45
+        
+        // Автоматическая настройка количества меток на оси X
+        val dataPointsCount = returnPoints.size
+        when {
+            dataPointsCount < 30 -> styler.xAxisTickMarkSpacingHint = 50  // Показываем больше меток
+            dataPointsCount < 180 -> styler.xAxisTickMarkSpacingHint = 80  // Средняя плотность
+            dataPointsCount < 365 -> styler.xAxisTickMarkSpacingHint = 100 // Меньше меток
+            else -> styler.xAxisTickMarkSpacingHint = 120 // Еще меньше для многолетних данных
+        }
+    }
+    
+    /**
+     * Определяет оптимальный формат дат в зависимости от длительности периода
+     */
+    private fun getDatePattern(returnPoints: List<ReturnPoint>): String {
+        if (returnPoints.size < 2) return "dd.MM.yyyy"
+        
+        val firstDate = returnPoints.first().date
+        val lastDate = returnPoints.last().date
+        val totalDays = java.time.temporal.ChronoUnit.DAYS.between(firstDate, lastDate)
+        
+        return when {
+            totalDays < 60 -> "dd MMM"           // Меньше 2 месяцев: "15 янв"
+            totalDays < 365 -> "dd MMM"          // Меньше года: "15 янв"
+            totalDays < 730 -> "MMM yyyy"        // 1-2 года: "янв 2024"
+            else -> "MMM yyyy"                    // Больше 2 лет: "янв 2024"
+        }
     }
 }

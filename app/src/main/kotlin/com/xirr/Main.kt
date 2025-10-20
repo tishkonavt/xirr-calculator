@@ -119,7 +119,7 @@ fun main(args: Array<String>) {
 
             // Подготовка карты даты -> индекс снапшота
             val dateToIdx = snapshots.mapIndexed { idx, s -> s.date.toString() to idx }.toMap()
-            val headerCols = header.split(",")
+            val headerCols = header.split(";")
             val dateColIndex = headerCols.indexOfFirst { it.lowercase().contains("date") }
 
             if (lines.size - 1 == snapshots.size) {
@@ -129,18 +129,18 @@ fun main(args: Array<String>) {
                     val cumVal = cumulativePoints.getOrNull(snapIdx)?.xirrRate
                     val xirrStr = xirrVal?.let { String.format("%.8f", it) } ?: ""
                     val cumStr = cumVal?.let { String.format("%.8f", it) } ?: ""
-                    outLines.add(lines[i] + "," + xirrStr + "," + cumStr)
+                    outLines.add(lines[i] + ";" + xirrStr + ";" + cumStr)
                 }
             } else if (dateColIndex >= 0) {
                 for (i in 1 until lines.size) {
-                    val cols = lines[i].split(",")
+                    val cols = lines[i].split(";")
                     val dateVal = cols.getOrNull(dateColIndex)?.trim()?.trim('"')
                     val snapIdx = dateVal?.let { dateToIdx[it] }
                     val xirrVal = snapIdx?.let { xirrPoints.getOrNull(it)?.xirrRate }
                     val cumVal = snapIdx?.let { cumulativePoints.getOrNull(it)?.xirrRate }
                     val xirrStr = xirrVal?.let { String.format("%.8f", it) } ?: ""
                     val cumStr = cumVal?.let { String.format("%.8f", it) } ?: ""
-                    outLines.add(lines[i] + "," + xirrStr + "," + cumStr)
+                    outLines.add(lines[i] + ";" + xirrStr + ";" + cumStr)
                 }
             } else {
                 println("⚠️ Несоответствие строк CSV и количества снимков. Попытка дописать по минимальному количеству.")
@@ -151,11 +151,11 @@ fun main(args: Array<String>) {
                     val cumVal = cumulativePoints.getOrNull(snapIdx)?.xirrRate
                     val xirrStr = xirrVal?.let { String.format("%.8f", it) } ?: ""
                     val cumStr = cumVal?.let { String.format("%.8f", it) } ?: ""
-                    outLines.add(lines[i] + "," + xirrStr + "," + cumStr)
+                    outLines.add(lines[i] + ";" + xirrStr + ";" + cumStr)
                 }
                 if (lines.size - 1 > min) {
                     for (i in (min + 1) until lines.size) {
-                        outLines.add(lines[i] + ",,")
+                        outLines.add(lines[i] + ";;")
                     }
                 }
             }

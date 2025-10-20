@@ -1,36 +1,35 @@
 # Gradle
-.gradle
+.gradle/
 build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
+**/build/
 
-# IntelliJ IDEA
-.idea/
+# Gradle wrapper jars
+gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+/.idea/
+/.vscode/
 *.iml
-*.iws
-*.ipr
-out/
 
-# VS Code
-.vscode/
+# Kotlin/Java
+/out/
+*.class
 
-# macOS
+# OS
 .DS_Store
 
-# Generated files
-*.png
-*.jpg
-*.jpeg
+# JARs / distributions / artifacts
+*.jar
+app/build/
+app/buildlibs/
+app/distributions/
+app/*.zip
+app/*.tar
+app/bin/
+bin/
 
-# CSV data files
-*.csv
-
-# Logs
+# logs
 *.log
 
-# Java
-*.class
-*.jar
-!releases/*.jar
-!gradle-wrapper.jar
+# user-specific
+local.properties

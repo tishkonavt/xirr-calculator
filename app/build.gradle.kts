@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm") version "1.9.20"
     application
     id("com.google.protobuf") version "0.9.1"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 group = "com.xirr"
@@ -19,19 +20,15 @@ dependencies {
     implementation("org.knowm.xchart:xchart:3.8.5")
     
     // gRPC
-    implementation("io.grpc:grpc-netty:1.58.0")
-    implementation("io.grpc:grpc-protobuf:1.58.0")
-    implementation("io.grpc:grpc-stub:1.58.0")
-    implementation("io.grpc:grpc-services:1.58.0")
-    implementation("io.grpc:grpc-core:1.58.0")
+    implementation(platform("io.grpc:grpc-bom:1.58.0"))
+    implementation("io.grpc:grpc-netty")
+    implementation("io.grpc:grpc-protobuf")
+    implementation("io.grpc:grpc-stub")
+    implementation("io.grpc:grpc-services")
     implementation("com.google.protobuf:protobuf-java:3.24.0")
-
-    compileOnly("javax.annotation:javax.annotation-api:1.3.2")
     
-    // Ktor для веб-сервера
-    implementation("io.ktor:ktor-server-core:2.3.5")
-    implementation("io.ktor:ktor-server-netty:2.3.5")
-    implementation("io.ktor:ktor-server-html-builder:2.3.5")
+    // Аннотации
+    compileOnly("javax.annotation:javax.annotation-api:1.3.2")
     
     // Логирование
     implementation("ch.qos.logback:logback-classic:1.4.11")
@@ -58,7 +55,6 @@ protobuf {
     }
 }
 
-// Указываем где искать сгенерированные файлы
 sourceSets {
     main {
         java {
@@ -79,17 +75,17 @@ kotlin {
 }
 
 application {
-    mainClass.set("com.xirr.WebServerKt")
+    mainClass.set("com.xirr.MainKt")  // ← Изменили на Main
 }
 
-tasks.register<Jar>("fatJar") {
-    archiveClassifier.set("all")
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+// Shadow JAR для удобного распространения
+tasks.shadowJar {
+    archiveBaseName.set("xirr-calculator")
+    archiveClassifier.set("")
+    
+    mergeServiceFiles()
     
     manifest {
-        attributes["Main-Class"] = "com.xirr.WebServerKt"
+        attributes["Main-Class"] = "com.xirr.MainKt"
     }
-    
-    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
-    from(sourceSets.main.get().output)
 }

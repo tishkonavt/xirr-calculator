@@ -2,6 +2,7 @@ package com.xirr.data
 
 import com.xirr.models.PortfolioSnapshot
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -9,25 +10,32 @@ import java.time.format.DateTimeFormatter
 /**
  * Провайдер данных из CSV файла
  */
-class CsvDataProvider(private val resourceName: String = "portfolio_data.csv") : DataProvider {
+class CsvDataProvider(private val filePath: String) : DataProvider {
     
     override fun getPortfolioSnapshots(): List<PortfolioSnapshot> {
-        println("Чтение файла: $resourceName из resources")
+        println("Чтение файла: $filePath")
         
-        // Читаем файл из resources через classloader
-        val inputStream = this::class.java.classLoader.getResourceAsStream(resourceName)
-            ?: throw IllegalArgumentException("Файл не найден в resources: $resourceName")
-        
-        val lines = BufferedReader(InputStreamReader(inputStream)).use { reader ->
-            reader.readLines()
+        val lines = try {
+            // Сначала пробуем как обычный файл
+            val file = File(filePath)
+            if (file.exists()) {
+                file.readLines()
+            } else {
+                // Пробуем как ресурс
+                val inputStream = this::class.java.classLoader.getResourceAsStream(filePath.removePrefix("app/src/main/resources/"))
+                    ?: throw IllegalArgumentException("Файл не найден: $filePath")
+                
+                BufferedReader(InputStreamReader(inputStream)).use { it.readLines() }
+            }
+        } catch (e: Exception) {
+            throw IllegalArgumentException("Ошибка чтения файла: ${e.message}")
         }
         
         if (lines.isEmpty()) {
             throw IllegalArgumentException("Файл пуст")
         }
         
-        // Пропускаем заголовок
-        val dataLines = lines.drop(1)
+        val dataLines = lines.drop(1) // Пропускаем заголовок
         
         val snapshots = dataLines.mapNotNull { line ->
             parseLine(line)
@@ -38,11 +46,6 @@ class CsvDataProvider(private val resourceName: String = "portfolio_data.csv") :
         return snapshots
     }
     
-    /**
-     * Парсит одну строку CSV
-     * Формат: date;valuation;cashIn;cashOut
-     * Числа в европейском формате: "400 000,00"
-     */
     private fun parseLine(line: String): PortfolioSnapshot? {
         if (line.isBlank()) return null
         
@@ -54,10 +57,7 @@ class CsvDataProvider(private val resourceName: String = "portfolio_data.csv") :
         }
         
         try {
-            // Парсим дату (формат: yyyy-MM-dd)
             val date = LocalDate.parse(parts[0].trim(), DateTimeFormatter.ISO_LOCAL_DATE)
-            
-            // Парсим числа (убираем пробелы, заменяем запятую на точку)
             val valuation = parseEuropeanNumber(parts[1])
             val cashIn = parseEuropeanNumber(parts[2])
             val cashOut = parseEuropeanNumber(parts[3])
@@ -74,14 +74,11 @@ class CsvDataProvider(private val resourceName: String = "portfolio_data.csv") :
         }
     }
     
-    /**
-     * Парсит число в европейском формате
-     * Пример: "400 000,00" → 400000.00
-     */
     private fun parseEuropeanNumber(value: String): Double {
+        if (value.trim().isEmpty()) return 0.0
         return value.trim()
-            .replace(" ", "")      // Убираем пробелы
-            .replace(",", ".")     // Заменяем запятую на точку
+            .replace(" ", "")
+            .replace(",", ".")
             .toDouble()
     }
 }

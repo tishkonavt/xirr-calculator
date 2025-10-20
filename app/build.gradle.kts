@@ -23,6 +23,7 @@ dependencies {
     implementation("io.grpc:grpc-protobuf:1.58.0")
     implementation("io.grpc:grpc-stub:1.58.0")
     implementation("io.grpc:grpc-services:1.58.0")
+    implementation("io.grpc:grpc-core:1.58.0")
     implementation("com.google.protobuf:protobuf-java:3.24.0")
 
     compileOnly("javax.annotation:javax.annotation-api:1.3.2")

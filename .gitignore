@@ -32,4 +32,5 @@ out/
 # Java
 *.class
 *.jar
+!releases/*.jar
 !gradle-wrapper.jar
